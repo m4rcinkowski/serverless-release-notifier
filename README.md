@@ -2,7 +2,7 @@ Release notifier
 ===
 
 **The problem:**  
-You deploy your app, either manually or through CI/CD pipeline, and need to wait for new hosts/containers to be set up, for the app to rise. So you wait, because the client or your team (QA engineer for particular) waits for the confirmation that new version is out.
+You deploy your app, either manually or through CI/CD pipeline, and need to wait for new hosts/containers to be set up, for the app to rise. So you wait, because the client or your team (QA engineer for example) waits for the confirmation that the new version is out.
 
 **The solution:**  
 Simple HTTP request sent just before your app starts will result in a notification on e.g. Slack channel.
