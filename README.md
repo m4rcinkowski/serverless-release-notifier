@@ -15,3 +15,7 @@ Simple HTTP request sent just before your app starts will result in a notificati
 * flexible - can be used with any notification webhook (TODO)
 
 The solution is cost-effective and will not produce additional costs when not used (which would be most of the time).
+
+# Usage
+
+TODO
