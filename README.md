@@ -18,4 +18,20 @@ The solution is cost-effective and will not produce additional costs when not us
 
 # Usage
 
+## Deployment
+
 TODO
+
+## Triggering a release event
+
+Given that you hold you application version or release id in a variable, e.g. `CI_JOB_ID="api-2.50.1""` use below curl command to send a request:
+
+```shell
+EXP_TIME=$(date -d '+1 hour' +%s)
+NOTIFICATION_URL='https://vqdmg7tn7k.execute-api.eu-west-1.amazonaws.com/dev'
+
+curl -XPUT $NOTIFICATION_URL/releases/$CI_JOB_ID -d '{"LockedUntil": {"N":'$EXP_TIME'}}' -H 'Content-Type: application/json'
+```
+
+Any request after the first one, will result in a response code 400 with a response indicating a _conditional check failure_.  
+That is - within the expiration (lock) time you've provided. Remember that your release will not be unlocked immediately after the expiration time. DynamoDB allows itself to wait up to 48 hours to delete expired items - you've been warned, although in normal usage it should not be an issue.

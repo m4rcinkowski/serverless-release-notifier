@@ -1,12 +1,13 @@
-import { APIGatewayProxyHandler } from 'aws-lambda';
+import { DynamoDBStreamHandler } from 'aws-lambda';
 import 'source-map-support/register';
+import {Converter} from 'aws-sdk/clients/dynamodb';
 
-export const hello: APIGatewayProxyHandler = async (event, _context) => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify({
-      message: 'Go Serverless Webpack (Typescript) v1.0! Your function executed successfully!',
-      input: event,
-    }, null, 2),
-  };
-}
+export const onNewRelease: DynamoDBStreamHandler = async (event, _context) => {
+  console.debug(`Received ${event.Records.length} event(s)`);
+
+  event.Records.filter((record) => record.eventName === 'INSERT').forEach((record) => {
+    const attributes = Converter.unmarshall(record.dynamodb.NewImage);
+
+    console.log('Processing new table item', attributes);
+  });
+};

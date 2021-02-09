@@ -13,6 +13,7 @@
     "@types/aws-lambda": "^8.10.17",
     "@types/node": "^10.12.18",
     "@types/serverless": "^1.72.5",
+    "aws-sdk": "^2.840.0",
     "fork-ts-checker-webpack-plugin": "^3.0.1",
     "serverless": "^2.22.0",
     "serverless-apigateway-service-proxy": "^1.14.0",
