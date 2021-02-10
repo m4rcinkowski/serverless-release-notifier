@@ -9,47 +9,54 @@ const webhookUrl = process.env.WEBHOOK_URL;
 assert.ok(webhookUrl, 'WEBHOOK_URL is not in env vars');
 const httpClient = AWSXRay.captureHTTPs(https, true);
 
-function postToWebhook(attributes: { [p: string]: any }) {
-    const webhookRequest = httpClient.request(webhookUrl, {
-        method: 'post',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    }, (res) => {
-        console.log(`STATUS: ${res.statusCode}`);
-        console.log(`HEADERS: ${JSON.stringify(res.headers)}`);
-        res.setEncoding('utf8');
-        res.on('data', (chunk) => {
-            console.log(`BODY: ${chunk}`);
-        });
-        res.on('end', () => {
-            console.log('No more data in response.');
-        });
-    });
-    webhookRequest.on('error', (e) => {
-        console.error(`problem with request: ${e.message}`);
-    });
-    webhookRequest.write(JSON.stringify({
-        blocks: [
-            {
-                type: 'section',
-                text: {
-                    type: 'mrkdwn',
-                    text: `Release \`${attributes.ReleaseId}\` has reached the production`,
-                },
+type ReleaseAttributes = {
+    ReleaseId: string,
+    LockedUntil?: number,
+    Environment?: string,
+};
+
+async function postToWebhook(attributes: ReleaseAttributes): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+        const environment = attributes.Environment || 'the destination';
+
+        const webhookRequest = httpClient.request(webhookUrl, {
+            method: 'post',
+            headers: {
+                'Content-Type': 'application/json',
             },
-        ],
-    }));
-    webhookRequest.end();
+        }, (res) => {
+            res.on('end', () => {
+                resolve();
+            });
+        });
+        webhookRequest.on('error', (e) => {
+            console.error(`problem with request: ${e.message}`);
+            reject();
+        });
+        webhookRequest.write(JSON.stringify({
+            blocks: [
+                {
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: `Release \`${attributes.ReleaseId}\` has reached ${environment}`,
+                    },
+                },
+            ],
+        }));
+        webhookRequest.end();
+    });
 }
 
 export const onNewRelease: DynamoDBStreamHandler = async (event, _context) => {
-    console.debug(`Received ${event.Records.length} event(s)`);
+    const newRecords = event.Records.filter((record) => record.eventName === 'INSERT')
+        .map(record => record.dynamodb.NewImage);
+    console.debug(`Received ${event.Records.length} event(s), ${newRecords.length} of which are INSERTs`);
 
-    event.Records.filter((record) => record.eventName === 'INSERT').forEach((record) => {
-        const attributes = Converter.unmarshall(record.dynamodb.NewImage);
+    for (const eventRecord of newRecords) {
+        const attributes = Converter.unmarshall(eventRecord) as ReleaseAttributes;
 
         console.log('Processing new table item', attributes);
-        postToWebhook(attributes);
-    });
+        await postToWebhook(attributes);
+    }
 };
