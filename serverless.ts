@@ -45,6 +45,9 @@ const serverlessConfiguration: Serverless = {
     functions: {
         handleNewRelease: {
             handler: 'handler.onNewRelease',
+            environment: {
+                WEBHOOK_URL: '',
+            },
             events: [
                 {
                     stream: {
