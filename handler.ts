@@ -12,12 +12,31 @@ const httpClient = AWSXRay.captureHTTPs(https, true);
 type ReleaseAttributes = {
     ReleaseId: string,
     LockedUntil?: number,
-    Environment?: string,
+    MessageTemplate?: string,
 };
+
+const interpolate = (template: string, params: object) => {
+    const names = Object.keys(params);
+    const vals = Object.values(params);
+
+    return new Function(...names, `return \`${template}\`;`)(...vals);
+}
 
 async function postToWebhook(attributes: ReleaseAttributes): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-        const environment = attributes.Environment || 'the destination';
+        const template = attributes.MessageTemplate || 'Release ${ReleaseId} has reached the destination';
+        let message;
+
+        try {
+            message = interpolate(template, attributes);
+        } catch (e) {
+            console.error('Error on interpolating message template', {
+                error: e,
+                template,
+                attributes,
+            });
+            reject();
+        }
 
         const webhookRequest = httpClient.request(webhookUrl, {
             method: 'post',
@@ -39,7 +58,7 @@ async function postToWebhook(attributes: ReleaseAttributes): Promise<void> {
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: `Release \`${attributes.ReleaseId}\` has reached ${environment}`,
+                        text: message,
                     },
                 },
             ],
@@ -57,6 +76,10 @@ export const onNewRelease: DynamoDBStreamHandler = async (event, _context) => {
         const attributes = Converter.unmarshall(eventRecord) as ReleaseAttributes;
 
         console.log('Processing new table item', attributes);
-        await postToWebhook(attributes);
+
+        try {
+            await postToWebhook(attributes);
+        } catch (e) {
+        }
     }
 };
