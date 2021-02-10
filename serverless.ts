@@ -41,6 +41,10 @@ const serverlessConfiguration: Serverless = {
         environment: {
             AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
         },
+        tracing: {
+            apiGateway: true,
+            lambda: true
+        }
     },
     functions: {
         handleNewRelease: {

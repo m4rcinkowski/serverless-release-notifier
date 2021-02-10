@@ -1,14 +1,16 @@
 import { DynamoDBStreamHandler } from 'aws-lambda';
 import 'source-map-support/register';
 import { Converter } from 'aws-sdk/clients/dynamodb';
-import { request } from 'https';
+import * as AWSXRay from 'aws-xray-sdk';
+import * as https from 'https';
 import * as assert from 'assert';
 
 const webhookUrl = process.env.WEBHOOK_URL;
 assert.ok(webhookUrl, 'WEBHOOK_URL is not in env vars');
+const httpClient = AWSXRay.captureHTTPs(https, true);
 
 function postToWebhook(attributes: { [p: string]: any }) {
-    const webhookRequest = request(webhookUrl, {
+    const webhookRequest = httpClient.request(webhookUrl, {
         method: 'post',
         headers: {
             'Content-Type': 'application/json',
@@ -33,9 +35,9 @@ function postToWebhook(attributes: { [p: string]: any }) {
                 type: 'section',
                 text: {
                     type: 'mrkdwn',
-                    text: `Release \`${attributes.ReleaseId}\` has reached the production`
-                }
-            }
+                    text: `Release \`${attributes.ReleaseId}\` has reached the production`,
+                },
+            },
         ],
     }));
     webhookRequest.end();
