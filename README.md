@@ -32,6 +32,8 @@ In case of a need for customization, use `npx sls help` for additional parameter
 
 ## Triggering a release event
 
+### Simple example
+
 All you need to trigger an event is to send an HTTP request with at least below body:
 
 ```json
@@ -42,15 +44,12 @@ All you need to trigger an event is to send an HTTP request with at least below 
 
 `LockedUntil` is optional, though highly recommended. Providing it with a numeric timestamp (UNIX epoch time in seconds) enables DynamoDB to remove this record (release entry) from the table somewhere after that time. Think about it as garbage collecting.
 
-### Practical example
-
-Given that you hold you application version or release id in a variable, e.g. `CI_JOB_ID="api-2.50.1""` use below curl command to send a request:
-
 ```shell
+RELEASE_ID="myapp-1.2.3"
 EXP_TIME=$(date -d '+1 hour' +%s)
-NOTIFICATION_URL='https://vqdmg7tn7k.execute-api.eu-west-1.amazonaws.com/dev'
+NOTIFICATION_URL='https://vqdmg7tn7k.execute-api.eu-west-1.amazonaws.com/dev' # only an example
 
-curl -XPUT $NOTIFICATION_URL/releases/$CI_JOB_ID \
+curl -XPUT $NOTIFICATION_URL/releases/$RELEASE_ID \
   -d '{"LockedUntil": {"N":'$EXP_TIME'}}' \
   -H 'Content-Type: application/json' \
   -s -o /dev/null
@@ -58,6 +57,8 @@ curl -XPUT $NOTIFICATION_URL/releases/$CI_JOB_ID \
 
 Any request after the first one, will result in a response code 400 with a response indicating a _conditional check failure_.  
 That is - within the expiration (lock) time you've provided. Remember that your release will not be unlocked immediately after the expiration time. DynamoDB allows itself to wait up to 48 hours to delete expired items - you've been warned, although in a generic case it should not be an issue.
+
+---  
 
 ### Slightly more advanced example
 
@@ -67,4 +68,18 @@ That is - within the expiration (lock) time you've provided. Remember that your 
   "Environment": {"S": "production"},
   "MessageTemplate": {"S": "Yo! Check out the ${Environment}, 'cause ${ReleaseId} has just landed there!"}
 }
+```
+
+or
+
+```shell
+APP_VERSION="1.2.4"
+RELEASE_ID="myapp-${APP_VERSION}"
+APP_ENV="prod"
+EXP_TIME=$(date -d '+1 hour' +%s)
+
+curl -XPUT "$RELEASE_NOTIFICATION_URL/releases/$RELEASE_ID" \
+  -d '{"LockedUntil": {"N":'$EXP_TIME'}, "Env": {"S": "'$APP_ENV'"}, "Version": {"S": "'$API_VERSION'"}, "MessageTemplate": {"S": "App is up an running at version *${Version}* in *${Env}* environment"}}' \
+  -H 'Content-Type: application/json' \
+  -s -o /dev/null
 ```
