@@ -18,6 +18,8 @@ The solution is cost-effective and will not produce additional costs when not us
 
 # Usage
 
+Create a file named `.env.local` (you can use already existing `.env` for reference), and pass a _WEBHOOK_URL_.
+
 ## Deployment
 
 After cloning the repository, install all the dependencies (`npm i`) and run:

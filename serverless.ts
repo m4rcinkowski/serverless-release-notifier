@@ -27,9 +27,16 @@ const serverlessConfiguration: Serverless = {
                 },
             },
         ],
+        dotenv: {
+            required: {
+                env: [
+                    'WEBHOOK_URL'
+                ],
+            },
+        },
     },
     // Add the serverless-webpack plugin
-    plugins: ['serverless-webpack', 'serverless-apigateway-service-proxy'],
+    plugins: ['serverless-webpack', 'serverless-apigateway-service-proxy', 'serverless-dotenv-plugin'],
     provider: {
         name: 'aws',
         runtime: 'nodejs12.x',
@@ -49,9 +56,6 @@ const serverlessConfiguration: Serverless = {
     functions: {
         handleNewRelease: {
             handler: 'handler.onNewRelease',
-            environment: {
-                WEBHOOK_URL: '',
-            },
             events: [
                 {
                     stream: {
