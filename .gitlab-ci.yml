@@ -1,0 +1,56 @@
+stages:
+#  - test
+  - deploy
+
+default:
+  image: node:12
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules
+
+#test:all:
+#  stage: test
+#  interruptible: true
+#  before_script:
+#    - unset SLACK_API_CLIENT_TOKEN SLACK_SIGNING_SECRET
+#    - |
+#      [[ ! -d node_modules ]] && npm ci
+#  script:
+#    - npm run test
+#  except:
+#    - master
+#
+#test:all-master:
+#  stage: test
+#  interruptible: true
+#  before_script:
+#    - unset SLACK_API_CLIENT_TOKEN SLACK_SIGNING_SECRET
+#    - |
+#      [[ ! -d node_modules ]] && npm ci
+#  script:
+#    - npm run test
+#  only:
+#    - master
+#  cache:
+#    key: ${CI_COMMIT_REF_SLUG}-${CI_PIPELINE_IID}
+#    paths:
+#      - node_modules
+
+deploy:prod:
+  stage: deploy
+  before_script:
+    - |
+      [[ -z "$AWS_ACCESS_KEY_ID" && -z "$AWS_PROFILE" ]] && echo "Missing AWS credentials - configure one of AWS CLI environment variables" && exit 1
+    - npm install -g serverless
+    - |
+      [[ ! -d node_modules ]] && npm ci
+  script:
+    - sls deploy
+  only:
+    - tags
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules
+    policy: pull
