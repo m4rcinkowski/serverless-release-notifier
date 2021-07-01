@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "@slack/web-api": "^6.2.4",
     "aws-xray-sdk": "^3.2.0",
     "source-map-support": "^0.5.10"
   },
