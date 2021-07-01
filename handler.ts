@@ -4,16 +4,22 @@ import { Converter } from 'aws-sdk/clients/dynamodb';
 import * as AWSXRay from 'aws-xray-sdk';
 import * as https from 'https';
 import * as assert from 'assert';
+import { WebClient } from '@slack/web-api';
 
 const webhookUrl = process.env.WEBHOOK_URL;
 assert.ok(webhookUrl, 'WEBHOOK_URL is not in env vars');
+assert.ok(process.env.SLACK_API_CLIENT_TOKEN, 'SLACK_API_CLIENT_TOKEN is not in env vars');
 const httpClient = AWSXRay.captureHTTPs(https, true);
 
 type ReleaseAttributes = {
+    __fileAttribute?: string,
+    __fileName?: string,
     ReleaseId: string,
     LockedUntil?: number,
     MessageTemplate?: string,
 };
+
+const slackClient = new WebClient(process.env.SLACK_API_CLIENT_TOKEN);
 
 const interpolate = (template: string, params: object) => {
     const names = Object.keys(params);
@@ -22,19 +28,28 @@ const interpolate = (template: string, params: object) => {
     return new Function(...names, `return \`${template}\`;`)(...vals);
 }
 
+const buildMessage = (attributes: ReleaseAttributes): string => {
+    const template = attributes.MessageTemplate || 'Release ${ReleaseId} has reached the destination';
+
+    try {
+        return interpolate(template, attributes);
+    } catch (e) {
+        console.error('Error on interpolating message template', {
+            error: e,
+            template,
+            attributes,
+        });
+        throw e;
+    }
+};
+
 async function postToWebhook(attributes: ReleaseAttributes): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-        const template = attributes.MessageTemplate || 'Release ${ReleaseId} has reached the destination';
         let message;
 
         try {
-            message = interpolate(template, attributes);
+            message = buildMessage(attributes);
         } catch (e) {
-            console.error('Error on interpolating message template', {
-                error: e,
-                template,
-                attributes,
-            });
             reject();
         }
 
@@ -67,6 +82,23 @@ async function postToWebhook(attributes: ReleaseAttributes): Promise<void> {
     });
 }
 
+async function postSnippet(attributes: ReleaseAttributes): Promise<void> {
+    const content = attributes[attributes.__fileAttribute];
+    const message = buildMessage(attributes);
+    const filename = attributes.__fileName;
+
+    const response = await slackClient.files.upload({
+        content,
+        channels: process.env.SLACK_CHANNELS,
+        filename,
+        initial_comment: message,
+    });
+
+    if (!response.ok) {
+        console.log('Slack said: "not ok"', response);
+    }
+}
+
 export const onNewRelease: DynamoDBStreamHandler = async (event, _context) => {
     const newRecords = event.Records.filter((record) => record.eventName === 'INSERT')
         .map(record => record.dynamodb.NewImage);
@@ -78,8 +110,13 @@ export const onNewRelease: DynamoDBStreamHandler = async (event, _context) => {
         console.log('Processing new table item', attributes);
 
         try {
-            await postToWebhook(attributes);
+            if (attributes.__fileAttribute) {
+                await postSnippet(attributes);
+            } else {
+                await postToWebhook(attributes);
+            }
         } catch (e) {
+            console.warn(e);
         }
     }
 };

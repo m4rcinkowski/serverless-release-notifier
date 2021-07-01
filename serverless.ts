@@ -40,7 +40,7 @@ const serverlessConfiguration: Serverless = {
     provider: {
         name: 'aws',
         runtime: 'nodejs12.x',
-        region: 'eu-west-1',
+        region: 'us-east-1',
         apiGateway: {
             minimumCompressionSize: 1024,
             shouldStartNameWithService: true,
@@ -66,6 +66,7 @@ const serverlessConfiguration: Serverless = {
                     },
                 },
             ],
+
         },
     },
     resources: {
